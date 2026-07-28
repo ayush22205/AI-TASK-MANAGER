@@ -1,16 +1,13 @@
-from fastapi import FastAPI 
-import database
-from dotenv import load_dotenv
-import os
+from fastapi import FastAPI
+from database import engine
+import model
 
 app = FastAPI()
 
-load_dotenv()
-URL = os.getenv("DATABASE_URL")
+model.Base.metadata.create_all(bind = engine)
 
 @app.get("/")
 def home():
     return{
-
         "message":"successfull"
     }

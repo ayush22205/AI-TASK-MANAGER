@@ -5,6 +5,7 @@ from database import engine, SessionLocal
 import model, schemas
 from passlib.context import CryptContext
 from auth import create_token, verify_token
+from ai import suggest_priority, breakdown_goal, daily_summary
 
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"])
@@ -193,3 +194,54 @@ def delete_task(
     db.delete(task)
     db.commit()
     return {"message": "Task deleted successfully"}
+
+
+from ai import suggest_priority, breakdown_goal, daily_summary
+
+# ---------------------------- AI ROUTES ---------------------------------
+
+@app.post("/ai/priority")
+def ai_priority(
+    data: schemas.TaskCreate,
+    current_user_email: str = Depends(verify_token)
+):
+    result = suggest_priority(data.title, data.description or "")
+    return result
+
+
+@app.post("/ai/breakdown")
+def ai_breakdown(
+    goal: str,
+    current_user_email: str = Depends(verify_token)
+):
+    result = breakdown_goal(goal)
+    return result
+
+
+@app.get("/ai/summary")
+def ai_summary(
+    db: Session = Depends(get_db),
+    current_user_email: str = Depends(verify_token)
+):
+    user = db.query(model.User).filter(
+        model.User.email == current_user_email
+    ).first()
+
+    tasks = db.query(model.Task).filter(
+        model.Task.user_id == user.id
+    ).all()
+
+    if not tasks:
+        return {"message": "No tasks found. Create some tasks first."}
+
+    task_list = [
+        {
+            "title": t.title,
+            "priority": t.priority,
+            "status": t.status,
+            "description": t.description or ""
+        }
+        for t in tasks
+    ]
+    result = daily_summary(task_list)
+    return result

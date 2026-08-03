@@ -98,3 +98,98 @@ def delete_user(username: str, db: Session = Depends(get_db), current_user_email
     db.delete(user_to_delete)
     db.commit()
     return {"message": "User deleted successfully"}
+
+# ---------------------TASK ROUTES ------------------------------------
+
+@app.post("/tasks", response_model=schemas.TaskResponse)
+def create_task(
+    data: schemas.TaskCreate,
+    db: Session = Depends(get_db),
+    current_user_email: str = Depends(verify_token)
+):
+    
+    user = db.query(model.User).filter(model.User.email == current_user_email).first()
+
+    new_task = model.Task(
+        title=data.title,
+        description=data.description,
+        priority=data.priority,
+        status=data.status,
+        due_date=data.due_date,
+        user_id=user.id  
+    )
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+    return new_task
+
+
+@app.get("/tasks", response_model=list[schemas.TaskResponse])
+def get_my_tasks(
+    db: Session = Depends(get_db),
+    current_user_email: str = Depends(verify_token)
+):
+    
+    user = db.query(model.User).filter(model.User.email == current_user_email).first()
+    return db.query(model.Task).filter(model.Task.user_id == user.id).all()
+
+
+@app.get("/tasks/{task_id}", response_model=schemas.TaskResponse)
+def get_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user_email: str = Depends(verify_token)
+):
+    user = db.query(model.User).filter(model.User.email == current_user_email).first()
+    task = db.query(model.Task).filter(
+        model.Task.id == task_id,
+        model.Task.user_id == user.id 
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
+@app.put("/tasks/{task_id}", response_model=schemas.TaskResponse)
+def update_task(
+    task_id: int,
+    data: schemas.TaskCreate,
+    db: Session = Depends(get_db),
+    current_user_email: str = Depends(verify_token)
+):
+    user = db.query(model.User).filter(model.User.email == current_user_email).first()
+    task = db.query(model.Task).filter(
+        model.Task.id == task_id,
+        model.Task.user_id == user.id
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task.title = data.title
+    task.description = data.description
+    task.priority = data.priority
+    task.status = data.status
+    task.due_date = data.due_date
+
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@app.delete("/tasks/{task_id}")
+def delete_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user_email: str = Depends(verify_token)
+):
+    user = db.query(model.User).filter(model.User.email == current_user_email).first()
+    task = db.query(model.Task).filter(
+        model.Task.id == task_id,
+        model.Task.user_id == user.id
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    db.delete(task)
+    db.commit()
+    return {"message": "Task deleted successfully"}

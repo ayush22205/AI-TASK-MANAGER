@@ -1,15 +1,30 @@
 from fastapi import FastAPI, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm  # ADD THIS
+from fastapi.security import OAuth2PasswordRequestForm 
 from sqlalchemy.orm import Session
 from database import engine, SessionLocal
 import model, schemas
 from passlib.context import CryptContext
 from auth import create_token, verify_token
 from ai import suggest_priority, breakdown_goal, daily_summary
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"])
 model.Base.metadata.create_all(bind=engine)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*", "null"], 
+    allow_credentials=False,       
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/app")
+def frontend():
+    return FileResponse("frontend.html")
 
 def get_db():
     db = SessionLocal()

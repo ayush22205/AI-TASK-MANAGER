@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Task Manager</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #222222;
+    --border2: #333333;
+    --text: #f0f0f0;
+    --text2: #888888;
+    --text3: #444444;
+    --white: #ffffff;
+    --accent: #ffffff;
+  }
+
+  body {
+    font-family: 'Courier New', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 13px;
+  }
+
+  /* ── LAYOUT ── */
+  .app { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── SIDEBAR ── */
+  .logo {
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--white);
+    text-transform: uppercase;
+  }
+  .logo-sub { font-size: 10px; color: var(--text2); margin-top: 3px; letter-spacing: 0.05em; }
+
+  .nav { padding: 12px 0; flex: 1; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    color: var(--text2);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--white); border-left-color: var(--white); background: var(--surface2); }
+  .nav-icon { font-size: 14px; width: 16px; text-align: center; }
+  .nav-label { text-transform: uppercase; font-size: 11px; }
+
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .user-info { font-size: 11px; color: var(--text2); }
+  .user-email { color: var(--text); font-size: 12px; margin-bottom: 2px; word-break: break-all; }
+  .logout-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 7px;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .logout-btn:hover { border-color: var(--white); color: var(--white); }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+  }
+  .page-title { font-size: 16px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+  .api-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text2); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #3a3a3a; }
+  .status-dot.online { background: #ffffff; box-shadow: 0 0 6px #ffffff55; }
+
+  /* ── CONTENT ── */
+  .content { flex: 1; overflow-y: auto; padding: 28px; }
+
+  /* ── AUTH SCREEN ── */
+  .auth-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+  }
+  .auth-box {
+    width: 360px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 40px;
+  }
+  .auth-logo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .auth-logo-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--white);
+  }
+  .auth-logo-sub { font-size: 10px; color: var(--text2); margin-top: 4px; letter-spacing: 0.1em; }
+
+  .auth-tabs { display: flex; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
+  .auth-tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text2);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+  }
+  .auth-tab.active { color: var(--white); border-bottom-color: var(--white); }
+
+  /* ── FORMS ── */
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+  .form-input {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: var(--white); }
+  .form-input::placeholder { color: var(--text3); }
+
+  select.form-input { cursor: pointer; }
+  select.form-input option { background: var(--surface2); }
+
+  textarea.form-input { resize: vertical; min-height: 80px; }
+
+  .btn {
+    padding: 10px 20px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    font-weight: 600;
+  }
+  .btn-primary { background: var(--white); color: var(--bg); }
+  .btn-primary:hover { background: #dddddd; }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+  .btn-outline:hover { border-color: var(--white); color: var(--white); }
+  .btn-danger { background: transparent; border: 1px solid #444; color: #888; }
+  .btn-danger:hover { border-color: #ff4444; color: #ff4444; }
+  .btn-full { width: 100%; }
+  .btn-sm { padding: 6px 12px; font-size: 10px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-bottom: 12px;
+  }
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--white); }
+  .card-desc { font-size: 12px; color: var(--text2); margin-top: 4px; line-height: 1.5; }
+
+  .badge {
+    font-size: 9px;
+    padding: 3px 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    border: 1px solid;
+  }
+  .badge-high { color: #ffffff; border-color: #ffffff; }
+  .badge-medium { color: #888888; border-color: #888888; }
+  .badge-low { color: #444444; border-color: #444444; }
+  .badge-todo { color: #666666; border-color: #333333; background: #111; }
+  .badge-in_progress { color: #aaaaaa; border-color: #555555; background: #111; }
+  .badge-done { color: #ffffff; border-color: #777777; background: #1a1a1a; }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .card-actions { display: flex; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+  /* ── STATS ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 20px;
+  }
+  .stat-num { font-size: 28px; font-weight: 700; color: var(--white); line-height: 1; }
+  .stat-label { font-size: 10px; color: var(--text2); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 6px; }
+
+  /* ── AI PANEL ── */
+  .ai-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .ai-panel-title {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ai-result {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    padding: 14px;
+    margin-top: 12px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    display: none;
+  }
+  .ai-result.visible { display: block; }
+  .ai-result-row { display: flex; gap: 8px; margin-bottom: 6px; }
+  .ai-result-label { color: var(--text2); min-width: 120px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 1px; }
+  .ai-result-value { color: var(--white); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    display: none;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    padding: 28px;
+    width: 440px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
+  /* ── EMPTY ── */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+  }
+  .empty-icon { font-size: 32px; margin-bottom: 12px; }
+  .empty-text { font-size: 12px; letter-spacing: 0.05em; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--white);
+    color: var(--bg);
+    padding: 12px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    z-index: 999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.2s;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { background: #1a1a1a; color: #ff4444; border: 1px solid #ff4444; }
+
+  /* ── LOADING ── */
+  .loading { display: inline-block; color: var(--text2); font-size: 11px; letter-spacing: 0.1em; }
+  .loading::after { content: '...'; animation: dots 1.2s steps(4, end) infinite; }
+  @keyframes dots { 0%,20%{content:'.'} 40%{content:'..'} 60%,100%{content:'...'} }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .section-title { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text2); }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-title">Task.AI</div>
+      <div class="auth-logo-sub">AI-Powered Task Manager</div>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchTab('login')">Login</div>
+      <div class="auth-tab" onclick="switchTab('register')">Register</div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="loginEmail" type="email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="loginPassword" type="password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="login()">Login</button>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="registerForm" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="regUsername" placeholder="ayush123">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="regEmail" type="email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="regPassword" type="password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="register()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="mainApp" style="display:none">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-title">Task.AI</div>
+      <div class="logo-sub">AI Task Manager</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <span class="nav-icon">◈</span>
+        <span class="nav-label">Dashboard</span>
+      </div>
+      <div class="nav-item" onclick="showPage('tasks')">
+        <span class="nav-icon">≡</span>
+        <span class="nav-label">My Tasks</span>
+      </div>
+      <div class="nav-item" onclick="showPage('ai')">
+        <span class="nav-icon">◎</span>
+        <span class="nav-label">AI Tools</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-email" id="sidebarEmail">—</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">Logged in</div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="api-status">
+        <div class="status-dot online" id="statusDot"></div>
+        <span id="statusText">API Connected</span>
+      </div>
+    </div>
+
+    <div class="content" id="pageContent"></div>
+  </div>
+</div>
+
+<!-- CREATE/EDIT TASK MODAL -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">New Task</div>
+    <div class="form-group">
+      <label class="form-label">Title *</label>
+      <input class="form-input" id="taskTitle" placeholder="What needs to be done?">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-input" id="taskDesc" placeholder="Optional details..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Priority</label>
+      <select class="form-input" id="taskPriority">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select class="form-input" id="taskStatus">
+        <option value="todo">Todo</option>
+        <option value="in_progress">In Progress</option>
+        <option value="done">Done</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Due Date</label>
+      <input class="form-input" id="taskDue" type="datetime-local">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTask()">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = 'http://localhost:8000';
+  let token = localStorage.getItem('token') || '';
+  let currentEmail = localStorage.getItem('email') || '';
+  let editingTaskId = null;
+  let allTasks = [];
+
+  // ── INIT ──
+  window.onload = () => {
+    if (token) {
+      showApp();
+      showPage('dashboard');
+    }
+  };
+
+  function headers() {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  }
+
+  // ── AUTH ──
+  function switchTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach((t, i) => {
+      t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+    });
+    document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+  }
+
+  async function login() {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) return toast('Enter email and password', true);
+
+    try {
+      const res = await fetch(`${API}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+      });
+      const data = await res.json();
+      if (!res.ok) return toast(data.detail || 'Login failed', true);
+      token = data.access_token;
+      currentEmail = email;
+      localStorage.setItem('token', token);
+      localStorage.setItem('email', email);
+      showApp();
+      showPage('dashboard');
+      toast('Welcome back!');
+    } catch { toast('Cannot connect to API. Is your server running?', true); }
+  }
+
+  async function register() {
+    const username = document.getElementById('regUsername').value;
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    if (!username || !email || !password) return toast('Fill all fields', true);
+
+    try {
+      const res = await fetch(`${API}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, hash_password: password })
+      });
+      const data = await res.json();
+      if (!res.ok) return toast(data.detail || 'Registration failed', true);
+      toast('Account created! Please login.');
+      switchTab('login');
+    } catch { toast('Cannot connect to API', true); }
+  }
+
+  function showApp() {
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'flex';
+    document.getElementById('sidebarEmail').textContent = currentEmail;
+  }
+
+  function logout() {
+    token = ''; currentEmail = '';
+    localStorage.removeItem('token');
+    localStorage.removeItem('email');
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+    toast('Logged out');
+  }
+
+  // ── NAVIGATION ──
+  function showPage(page) {
+    document.querySelectorAll('.nav-item').forEach((item, i) => {
+      item.classList.toggle('active', ['dashboard','tasks','ai'][i] === page);
+    });
+    const titles = { dashboard: 'Dashboard', tasks: 'My Tasks', ai: 'AI Tools' };
+    document.getElementById('pageTitle').textContent = titles[page];
+    if (page === 'dashboard') renderDashboard();
+    else if (page === 'tasks') renderTasks();
+    else if (page === 'ai') renderAI();
+  }
+
+  // ── DASHBOARD ──
+  async function renderDashboard() {
+    const el = document.getElementById('pageContent');
+    el.innerHTML = `<div class="loading">Loading</div>`;
+    try {
+      const res = await fetch(`${API}/tasks`, { headers: headers() });
+      allTasks = await res.json();
+      const total = allTasks.length;
+      const todo = allTasks.filter(t => t.status === 'todo').length;
+      const inprog = allTasks.filter(t => t.status === 'in_progress').length;
+      const done = allTasks.filter(t => t.status === 'done').length;
+      const high = allTasks.filter(t => t.priority === 'high').length;
+
+      el.innerHTML = `
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-num">${total}</div>
+            <div class="stat-label">Total Tasks</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num">${todo}</div>
+            <div class="stat-label">Todo</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num">${inprog}</div>
+            <div class="stat-label">In Progress</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num">${done}</div>
+            <div class="stat-label">Done</div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <div class="section-title">Recent Tasks</div>
+          <button class="btn btn-primary btn-sm" onclick="openModal()">+ New Task</button>
+        </div>
+
+        ${allTasks.length === 0 ? `
+          <div class="empty">
+            <div class="empty-icon">◻</div>
+            <div class="empty-text">No tasks yet. Create your first task.</div>
+          </div>
+        ` : allTasks.slice(0, 4).map(t => taskCard(t)).join('')}
+
+        ${high > 0 ? `
+          <hr class="divider">
+          <div class="section-title" style="margin-bottom:12px">⚠ High Priority (${high})</div>
+          ${allTasks.filter(t => t.priority === 'high').map(t => taskCard(t)).join('')}
+        ` : ''}
+      `;
+    } catch { el.innerHTML = `<div class="empty"><div class="empty-text">Failed to load tasks</div></div>`; }
+  }
+
+  // ── TASKS ──
+  async function renderTasks() {
+    const el = document.getElementById('pageContent');
+    el.innerHTML = `<div class="loading">Loading</div>`;
+    try {
+      const res = await fetch(`${API}/tasks`, { headers: headers() });
+      allTasks = await res.json();
+      el.innerHTML = `
+        <div class="section-header">
+          <div class="section-title">${allTasks.length} Tasks</div>
+          <button class="btn btn-primary btn-sm" onclick="openModal()">+ New Task</button>
+        </div>
+        ${allTasks.length === 0 ? `
+          <div class="empty">
+            <div class="empty-icon">◻</div>
+            <div class="empty-text">No tasks yet.</div>
+          </div>
+        ` : allTasks.map(t => taskCard(t)).join('')}
+      `;
+    } catch { el.innerHTML = `<div class="empty"><div class="empty-text">Failed to load</div></div>`; }
+  }
+
+  function taskCard(t) {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">${t.title}</div>
+            ${t.description ? `<div class="card-desc">${t.description}</div>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+            <span class="badge badge-${t.priority}">${t.priority}</span>
+            <span class="badge badge-${t.status}">${t.status.replace('_',' ')}</span>
+          </div>
+        </div>
+        ${t.due_date ? `<div style="font-size:10px;color:var(--text2);margin-bottom:8px">Due: ${new Date(t.due_date).toLocaleDateString()}</div>` : ''}
+        <div class="card-actions">
+          <button class="btn btn-outline btn-sm" onclick="editTask(${t.id})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTask(${t.id})">Delete</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── AI PAGE ──
+  function renderAI() {
+    document.getElementById('pageContent').innerHTML = `
+
+      <div class="ai-panel">
+        <div class="ai-panel-title">◎ Priority Suggester</div>
+        <div class="form-group">
+          <label class="form-label">Task Title</label>
+          <input class="form-input" id="aiPriorityTitle" placeholder="e.g. Fix login bug before client demo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description (optional)</label>
+          <input class="form-input" id="aiPriorityDesc" placeholder="e.g. Client demo is tomorrow morning">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="aiPriority()">Suggest Priority</button>
+        <div class="ai-result" id="aiPriorityResult"></div>
+      </div>
+
+      <div class="ai-panel">
+        <div class="ai-panel-title">◎ Goal Breakdown</div>
+        <div class="form-group">
+          <label class="form-label">Your Goal</label>
+          <input class="form-input" id="aiGoal" placeholder="e.g. Build and deploy a REST API">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="aiBreakdown()">Break It Down</button>
+        <div class="ai-result" id="aiBreakdownResult"></div>
+      </div>
+
+      <div class="ai-panel">
+        <div class="ai-panel-title">◎ Daily Summary</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">AI reads all your tasks and generates a smart daily plan.</div>
+        <button class="btn btn-primary btn-sm" onclick="aiSummary()">Generate My Plan</button>
+        <div class="ai-result" id="aiSummaryResult"></div>
+      </div>
+    `;
+  }
+
+  async function aiPriority() {
+    const title = document.getElementById('aiPriorityTitle').value;
+    if (!title) return toast('Enter a task title', true);
+    const el = document.getElementById('aiPriorityResult');
+    el.classList.add('visible');
+    el.innerHTML = `<span class="loading">AI thinking</span>`;
+    try {
+      const res = await fetch(`${API}/ai/priority`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ title, description: document.getElementById('aiPriorityDesc').value, priority: 'medium', status: 'todo' })
+      });
+      const data = await res.json();
+      el.innerHTML = el.innerHTML = `
+  <div class="ai-result-row"><span class="ai-result-label">Priority</span><span class="ai-result-value">${(data.priority || data.Priority || 'N/A').toUpperCase()}</span></div>
+  <div class="ai-result-row"><span class="ai-result-label">Est. Time</span><span class="ai-result-value">${data.estimated_time || data.estimatedTime || data.time || 'N/A'}</span></div>
+  <div class="ai-result-row"><span class="ai-result-label">Reason</span><span class="ai-result-value">${data.reason || data.Reason || 'N/A'}</span></div>
+  <hr style="border-color:var(--border);margin:10px 0">
+  <div style="font-size:10px;color:var(--text2)">Raw: ${JSON.stringify(data)}</div>
+`;
+       
+    } catch { el.innerHTML = 'Error contacting AI'; }
+  }
+
+  async function aiBreakdown() {
+    const goal = document.getElementById('aiGoal').value;
+    if (!goal) return toast('Enter a goal', true);
+    const el = document.getElementById('aiBreakdownResult');
+    el.classList.add('visible');
+    el.innerHTML = `<span class="loading">AI thinking</span>`;
+    try {
+      const res = await fetch(`${API}/ai/breakdown?goal=${encodeURIComponent(goal)}`, {
+        method: 'POST', headers: headers()
+      });
+      const data = await res.json();
+      el.innerHTML = data.subtasks.map((s, i) => `
+        <div class="ai-result-row">
+          <span class="ai-result-label">${String(i+1).padStart(2,'0')}</span>
+          <span class="ai-result-value">${s}</span>
+        </div>
+      `).join('');
+    } catch { el.innerHTML = 'Error contacting AI'; }
+  }
+
+  async function aiSummary() {
+    const el = document.getElementById('aiSummaryResult');
+    el.classList.add('visible');
+    el.innerHTML = `<span class="loading">AI thinking</span>`;
+    try {
+      const res = await fetch(`${API}/ai/summary`, { headers: headers() });
+      const data = await res.json();
+      if (data.message) { el.innerHTML = data.message; return; }
+      el.innerHTML = `
+        <div class="ai-result-row"><span class="ai-result-label">Summary</span><span class="ai-result-value">${data.summary}</span></div>
+        <div class="ai-result-row"><span class="ai-result-label">Focus First</span><span class="ai-result-value">${data.focus_first}</span></div>
+        <div style="margin-top:10px;font-size:10px;color:var(--text2);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px">Your Plan</div>
+        ${data.plan.map((s, i) => `<div class="ai-result-row"><span class="ai-result-label">${String(i+1).padStart(2,'0')}</span><span class="ai-result-value">${s}</span></div>`).join('')}
+      `;
+    } catch { el.innerHTML = 'Error contacting AI'; }
+  }
+
+  // ── TASK MODAL ──
+  function openModal(task = null) {
+    editingTaskId = task ? task.id : null;
+    document.getElementById('modalTitle').textContent = task ? 'Edit Task' : 'New Task';
+    document.getElementById('taskTitle').value = task?.title || '';
+    document.getElementById('taskDesc').value = task?.description || '';
+    document.getElementById('taskPriority').value = task?.priority || 'medium';
+    document.getElementById('taskStatus').value = task?.status || 'todo';
+    document.getElementById('taskDue').value = task?.due_date ? task.due_date.slice(0,16) : '';
+    document.getElementById('taskModal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('taskModal').classList.remove('open');
+    editingTaskId = null;
+  }
+
+  async function editTask(id) {
+    try {
+      const res = await fetch(`${API}/tasks/${id}`, { headers: headers() });
+      const task = await res.json();
+      openModal(task);
+    } catch { toast('Failed to load task', true); }
+  }
+
+  async function saveTask() {
+    const title = document.getElementById('taskTitle').value;
+    if (!title) return toast('Title is required', true);
+    const body = {
+      title,
+      description: document.getElementById('taskDesc').value || null,
+      priority: document.getElementById('taskPriority').value,
+      status: document.getElementById('taskStatus').value,
+      due_date: document.getElementById('taskDue').value || null
+    };
+    try {
+      const url = editingTaskId ? `${API}/tasks/${editingTaskId}` : `${API}/tasks`;
+      const method = editingTaskId ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(body) });
+      if (!res.ok) { const d = await res.json(); return toast(d.detail || 'Failed', true); }
+      closeModal();
+      toast(editingTaskId ? 'Task updated' : 'Task created');
+      showPage(document.getElementById('pageTitle').textContent.toLowerCase() === 'dashboard' ? 'dashboard' : 'tasks');
+    } catch { toast('Failed to save task', true); }
+  }
+
+  async function deleteTask(id) {
+    if (!confirm('Delete this task?')) return;
+    try {
+      await fetch(`${API}/tasks/${id}`, { method: 'DELETE', headers: headers() });
+      toast('Task deleted');
+      renderTasks();
+    } catch { toast('Failed to delete', true); }
+  }
+
+  // ── TOAST ──
+  function toast(msg, isError = false) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(() => el.className = 'toast', 2800);
+  }
+</script>
+</body>
+</html>
